@@ -10,8 +10,8 @@ COPY . .
 # Install Flask
 RUN pip install flask
 
-# Expose port 80
-EXPOSE 80
+# Expose port 5000
+EXPOSE 5000
 
 # Run app.py
 CMD ["python", "app.py"]
