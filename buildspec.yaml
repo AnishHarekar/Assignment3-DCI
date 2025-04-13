@@ -5,23 +5,25 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
+      - aws ecr describe-repositories --repository-names assignment3 --region us-east-1 || aws ecr create-repository --repository-name assignment3 --region us-east-1
       - $(aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 992382594826.dkr.ecr.us-east-1.amazonaws.com)
       - REPOSITORY_URI=992382594826.dkr.ecr.us-east-1.amazonaws.com/assignment3
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-
   build:
     commands:
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
       - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
-
   post_build:
     commands:
       - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
+      - echo Initiating image scan...
+      - aws ecr start-image-scan --repository-name assignment3 --image-id imageTag=$IMAGE_TAG --region us-east-1
+      - echo Waiting for scan to complete...
+      - aws ecr wait image-scan-complete --repository-name assignment3 --image-id imageTag=$IMAGE_TAG --region us-east-1
       - echo Writing image definitions...
       - printf '[{"name":"flask-app","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-
 artifacts:
   files: imagedefinitions.json
